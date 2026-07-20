@@ -31,7 +31,16 @@ def cmakeArguments = [
     "-DBABYLON_NATIVE_PLUGIN_NATIVEXR=OFF",
     "-DBABYLON_NATIVE_PLUGIN_TESTUTILS=OFF",
     "-DBABYLON_NATIVE_PLUGIN_EXTERNALTEXTURE=OFF",
-    "-DBABYLON_NATIVE_PLUGIN_NATIVETRACING=OFF"
+    "-DBABYLON_NATIVE_PLUGIN_NATIVETRACING=OFF",
+    // Image loading (decode) and encoding, plus runtime shader compilation, are
+    // disabled to shrink the .so. A prebuilt GPU shader cache must be supplied
+    // at runtime via RuntimeOptions.shaderCachePath (ShaderCache stays enabled).
+    "-DBABYLON_NATIVE_PLUGIN_NATIVEENGINE_LOAD_IMAGES=OFF",
+    "-DBABYLON_NATIVE_PLUGIN_NATIVEENGINE_COMPILESHADERS=OFF",
+    "-DBABYLON_NATIVE_PLUGIN_NATIVEENCODING=OFF",
+    "-DBABYLON_NATIVE_PLUGIN_SHADERCOMPILER=OFF",
+    "-DBABYLON_NATIVE_PLUGIN_SHADERTOOL=OFF",
+    "-DBABYLON_NATIVE_PLUGIN_SHADERCACHE=ON"
 ]
 
 android {

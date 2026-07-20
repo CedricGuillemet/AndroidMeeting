@@ -41,6 +41,17 @@ set(BABYLON_NATIVE_PLUGIN_TESTUTILS OFF CACHE BOOL "" FORCE)
 set(BABYLON_NATIVE_PLUGIN_EXTERNALTEXTURE OFF CACHE BOOL "" FORCE)
 set(BABYLON_NATIVE_PLUGIN_NATIVETRACING OFF CACHE BOOL "" FORCE)
 
+# Drop image loading (decode), image encoding, and runtime shader compilation
+# to shrink the shipped .so. With shader compilation off, the app MUST provide a
+# prebuilt GPU shader cache at runtime via RuntimeOptions.shaderCachePath; the
+# ShaderCache plugin stays enabled so that load/save path works.
+set(BABYLON_NATIVE_PLUGIN_NATIVEENGINE_LOAD_IMAGES OFF CACHE BOOL "" FORCE)
+set(BABYLON_NATIVE_PLUGIN_NATIVEENGINE_COMPILESHADERS OFF CACHE BOOL "" FORCE)
+set(BABYLON_NATIVE_PLUGIN_NATIVEENCODING OFF CACHE BOOL "" FORCE)
+set(BABYLON_NATIVE_PLUGIN_SHADERCOMPILER OFF CACHE BOOL "" FORCE)
+set(BABYLON_NATIVE_PLUGIN_SHADERTOOL OFF CACHE BOOL "" FORCE)
+set(BABYLON_NATIVE_PLUGIN_SHADERCACHE ON CACHE BOOL "" FORCE)
+
 # --- Fetch BabylonNative -----------------------------------------------------
 # BabylonNative pulls all of its own dependencies (bgfx, JsRuntimeHost, the JS
 # engine, arcana, glslang, ...) via FetchContent, so a plain clone is enough.

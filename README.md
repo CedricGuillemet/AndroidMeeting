@@ -61,12 +61,45 @@ Output: `babylonview/build/outputs/aar/babylonview-release.aar`.
 `.github/workflows/build-aar.yml` builds the AAR on GitHub Actions (single ABI)
 and uploads it as the `babylonview-aar` artifact.
 
+## Native build size trade-offs
+
+To keep `libBabylonNativeEmbedding.so` small, the following are **disabled** in
+the native build:
+
+- **Image loading / decoding** (`NATIVEENGINE_LOAD_IMAGES=OFF`) — removes bimg
+  decode/encode and WebP. Textures must be provided in a GPU-ready form; runtime
+  decoding of PNG/JPEG/WebP is not available.
+- **Image encoding** (`NATIVEENCODING=OFF`) — no native PNG encoding /
+  `EncodeImageAsync` (screenshots, asset export).
+- **Runtime shader compilation** (`NATIVEENGINE_COMPILESHADERS=OFF`, plus
+  `SHADERCOMPILER`/`SHADERTOOL` off) — removes glslang + SPIRV-Cross.
+
+Because shader compilation is off, **you must supply a prebuilt GPU shader
+cache** or nothing will render. The `ShaderCache` plugin stays enabled and is
+exposed through the embedding layer via `RuntimeOptions.shaderCachePath`:
+
+- On the **first view attach**, the file at `shaderCachePath` is loaded
+  (`ShaderCache::Load`); a missing/unreadable file is ignored.
+- On **suspend** and on **runtime destroy**, the cache is written back
+  (`ShaderCache::Save`).
+
+Populate the cache once from a build that has shader compilation enabled, ship
+that file with your app, and point `shaderCachePath` at a writable copy of it.
+
 ## Using the view
 
 ```java
 BabylonNative.setContext(getApplicationContext());
-long runtime = BabylonNative.runtimeCreate();
+
+// Shader compilation is disabled in this build, so a prebuilt shader cache is
+// required. Point shaderCachePath at a writable file seeded from your prebuilt
+// cache; it is loaded on first attach and saved on suspend/destroy.
+BabylonNative.RuntimeOptions options = new BabylonNative.RuntimeOptions();
+options.shaderCachePath = new File(getFilesDir(), "shaders.bin").getAbsolutePath();
+
+long runtime = BabylonNative.runtimeCreate(options);
 BabylonNative.runtimeLoadScript(runtime, "app:///scene.js");
 BabylonView view = new BabylonView(this, runtime);
 setContentView(view);
 ```
+
