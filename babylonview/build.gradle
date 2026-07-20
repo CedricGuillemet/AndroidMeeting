@@ -16,7 +16,7 @@ if (project.hasProperty("GRAPHICS_API")) {
 }
 
 def cmakeArguments = [
-    "-DANDROID_STL=c++_shared",
+    "-DANDROID_STL=c++_static",
     "-DENABLE_PCH=OFF",
     "-DGRAPHICS_API=${graphics_api}",
     "-DNAPI_JAVASCRIPT_ENGINE=${jsEngine}",

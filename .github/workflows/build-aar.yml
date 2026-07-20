@@ -47,6 +47,18 @@ jobs:
           find babylonview/build -name '*.so' -printf '%s\t%p\n' | sort -rn \
             | awk '{ printf "%10.2f MiB  %s\n", $1/1048576, $2 }'
 
+      - name: Report static archive (.a) link contributions
+        # Parses the lld linker map emitted via -Wl,-Map to show which static
+        # libraries were pulled into libBabylonNativeEmbedding.so and their size.
+        run: |
+          MAP=$(find babylonview -name 'BabylonNativeEmbedding.map' | head -n1)
+          echo "Linker map: ${MAP:-<not found>}"
+          if [ -n "$MAP" ]; then
+            python3 ci/report_link_sizes.py "$MAP"
+          else
+            echo "No linker map found; skipping .a report."
+          fi
+
       - name: Upload AAR
         uses: actions/upload-artifact@v4
         with:

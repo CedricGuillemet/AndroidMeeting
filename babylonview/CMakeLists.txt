@@ -53,3 +53,10 @@ FetchContent_MakeAvailable(BabylonNative)
 
 # `BabylonNativeEmbedding` (the SHARED .so) is defined by
 # BabylonNative/Embedding/Android/CMakeLists.txt once the flags above are set.
+
+# --- Link-size diagnostics ---------------------------------------------------
+# Emit an lld linker map next to the .so so CI can report exactly which static
+# archives (.a) were pulled into the final library and how many bytes each
+# contributed. Cheap to produce and does not affect the shipped binary.
+target_link_options(BabylonNativeEmbedding PRIVATE
+    "-Wl,-Map=${CMAKE_CURRENT_BINARY_DIR}/BabylonNativeEmbedding.map")
