@@ -52,12 +52,9 @@ set(BABYLON_NATIVE_PLUGIN_SHADERCOMPILER OFF CACHE BOOL "" FORCE)
 set(BABYLON_NATIVE_PLUGIN_SHADERTOOL OFF CACHE BOOL "" FORCE)
 set(BABYLON_NATIVE_PLUGIN_SHADERCACHE ON CACHE BOOL "" FORCE)
 
-# Networking / input features not needed by this view. NativeInput is off, so
-# the host must not forward pointer events through the JNI viewPointer* methods
-# (they throw when the plugin is absent).
+# Networking polyfills not needed by this view.
 set(BABYLON_NATIVE_POLYFILL_WEBSOCKET OFF CACHE BOOL "" FORCE)
 set(BABYLON_NATIVE_POLYFILL_URL OFF CACHE BOOL "" FORCE)
-set(BABYLON_NATIVE_PLUGIN_NATIVEINPUT OFF CACHE BOOL "" FORCE)
 
 # --- Fetch BabylonNative -----------------------------------------------------
 # BabylonNative pulls all of its own dependencies (bgfx, JsRuntimeHost, the JS
@@ -71,12 +68,6 @@ FetchContent_MakeAvailable(BabylonNative)
 
 # `BabylonNativeEmbedding` (the SHARED .so) is defined by
 # BabylonNative/Embedding/Android/CMakeLists.txt once the flags above are set.
-
-# BabylonNative compiles with -Werror. With NativeInput disabled, Embedding's
-# View.cpp leaves `ToLogicalCoords` (used only by the pointer-input paths)
-# unreferenced, which trips -Werror=unused-function. Demote just that warning
-# for the affected target so this trimmed configuration builds.
-target_compile_options(Embedding PRIVATE -Wno-error=unused-function)
 
 # --- Minimal-size linking ----------------------------------------------------
 # Drop unreferenced code/data, fold identical functions, hide symbols pulled in

@@ -77,9 +77,6 @@ the native build:
   `URL` global (`POLYFILL_URL=OFF`). `fetch`/`XMLHttpRequest` remain available
   (XMLHttpRequest is always linked by the Embedding layer and cannot be gated
   off by a flag).
-- **Native input** (`NATIVEINPUT=OFF`) — pointer/touch events are **not**
-  forwarded to Babylon.js. `BabylonView` no longer wires touch handling; hosts
-  that need input must implement it themselves.
 
 Size-minimizing codegen is also applied to the whole native build: `-Oz`,
 function/data sections with `--gc-sections`, hidden symbol visibility with

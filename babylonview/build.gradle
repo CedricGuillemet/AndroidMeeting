@@ -41,10 +41,9 @@ def cmakeArguments = [
     "-DBABYLON_NATIVE_PLUGIN_SHADERCOMPILER=OFF",
     "-DBABYLON_NATIVE_PLUGIN_SHADERTOOL=OFF",
     "-DBABYLON_NATIVE_PLUGIN_SHADERCACHE=ON",
-    // Networking / input features not needed by this view.
+    // Networking polyfills not needed by this view.
     "-DBABYLON_NATIVE_POLYFILL_WEBSOCKET=OFF",
-    "-DBABYLON_NATIVE_POLYFILL_URL=OFF",
-    "-DBABYLON_NATIVE_PLUGIN_NATIVEINPUT=OFF"
+    "-DBABYLON_NATIVE_POLYFILL_URL=OFF"
 ]
 
 android {

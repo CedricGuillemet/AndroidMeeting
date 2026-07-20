@@ -3,8 +3,10 @@ package com.babylonjs.meeting;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.PixelFormat;
+import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
+import android.view.View;
 import android.widget.FrameLayout;
 
 import com.babylonjs.embedding.BabylonNative;
@@ -42,12 +44,9 @@ import com.babylonjs.embedding.BabylonNative;
  *
  * <p>All sizes and coordinates passed to native are physical pixels — the
  * native View queries DPR internally.
- *
- * <p>Pointer/touch input is <b>not</b> forwarded: the native build has the
- * NativeInput plugin disabled, so the {@code viewPointer*} JNI methods are
- * unavailable. Hosts that need input must handle it themselves.
  */
-public class BabylonView extends FrameLayout implements SurfaceHolder.Callback2 {
+public class BabylonView extends FrameLayout
+        implements SurfaceHolder.Callback2, View.OnTouchListener {
 
     private static final FrameLayout.LayoutParams CHILD_LAYOUT_PARAMS =
             new FrameLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT);
@@ -77,6 +76,8 @@ public class BabylonView extends FrameLayout implements SurfaceHolder.Callback2 
 
         this.surfaceView.getHolder().addCallback(this);
         this.addView(this.surfaceView);
+
+        setOnTouchListener(this);
 
         // Drive the render loop from onDraw/invalidate.
         setWillNotDraw(false);
@@ -110,6 +111,32 @@ public class BabylonView extends FrameLayout implements SurfaceHolder.Callback2 
     @Override
     public void surfaceRedrawNeeded(SurfaceHolder holder) {
         // Redraw happens on the bgfx thread; nothing to do here.
+    }
+
+    @Override
+    public boolean onTouch(View v, MotionEvent event) {
+        if (viewHandle == 0) {
+            return false;
+        }
+
+        int pointerId = event.getPointerId(event.getActionIndex());
+        float x = event.getX(event.getActionIndex());
+        float y = event.getY(event.getActionIndex());
+
+        switch (event.getActionMasked()) {
+            case MotionEvent.ACTION_DOWN:
+            case MotionEvent.ACTION_POINTER_DOWN:
+                BabylonNative.viewPointerDown(viewHandle, pointerId, x, y);
+                break;
+            case MotionEvent.ACTION_MOVE:
+                BabylonNative.viewPointerMove(viewHandle, pointerId, x, y);
+                break;
+            case MotionEvent.ACTION_UP:
+            case MotionEvent.ACTION_POINTER_UP:
+                BabylonNative.viewPointerUp(viewHandle, pointerId, x, y);
+                break;
+        }
+        return true;
     }
 
     @Override
