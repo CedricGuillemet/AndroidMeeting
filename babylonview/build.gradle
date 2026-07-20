@@ -63,7 +63,20 @@ android {
                 targets "BabylonNativeEmbedding"
                 abiFilters "arm64-v8a", "armeabi-v7a", "x86", "x86_64"
                 arguments(*cmakeArguments)
-                cppFlags += ["-Wno-deprecated-literal-operator"]
+                // Minimal-size codegen applied to the whole native build
+                // (BabylonNative + all fetched deps). -Oz optimizes hard for
+                // size; function/data sections + hidden visibility let the
+                // linker's --gc-sections drop everything unreferenced; ThinLTO
+                // enables cross-module size reduction.
+                def sizeFlags = [
+                    "-Oz",
+                    "-ffunction-sections",
+                    "-fdata-sections",
+                    "-fvisibility=hidden",
+                    "-flto=thin"
+                ]
+                cFlags += sizeFlags
+                cppFlags += sizeFlags + ["-fvisibility-inlines-hidden", "-Wno-deprecated-literal-operator"]
             }
         }
 

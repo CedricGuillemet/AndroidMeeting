@@ -47,6 +47,21 @@ jobs:
           find babylonview/build -name '*.so' -printf '%s\t%p\n' | sort -rn \
             | awk '{ printf "%10.2f MiB  %s\n", $1/1048576, $2 }'
 
+      - name: Verify JNI symbols are exported
+        # The size flags (hidden visibility, --exclude-libs, gc/icf) must not
+        # strip the JNIEXPORT entry points the AAR's Java layer binds against.
+        run: |
+          SO=$(find babylonview/build -path '*stripReleaseDebugSymbols*arm64-v8a*' -name 'libBabylonNativeEmbedding.so' | head -n1)
+          [ -z "$SO" ] && SO=$(find babylonview/build -name 'libBabylonNativeEmbedding.so' | head -n1)
+          echo "Inspecting: $SO"
+          NM=$(find "$ANDROID_HOME/ndk" -name 'llvm-nm' | head -n1)
+          COUNT=$("$NM" -D --defined-only "$SO" | grep -c 'Java_com_babylonjs_embedding_BabylonNative_')
+          echo "Exported Java_com_babylonjs_embedding_BabylonNative_* symbols: $COUNT"
+          if [ "$COUNT" -lt 1 ]; then
+            echo "::error::No BabylonNative JNI symbols exported; size flags broke the ABI."
+            exit 1
+          fi
+
       - name: Report static archive (.a) link contributions
         # Parses the lld linker map emitted via -Wl,-Map to show which static
         # libraries were pulled into libBabylonNativeEmbedding.so and their size.

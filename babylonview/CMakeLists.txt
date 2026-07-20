@@ -65,6 +65,16 @@ FetchContent_MakeAvailable(BabylonNative)
 # `BabylonNativeEmbedding` (the SHARED .so) is defined by
 # BabylonNative/Embedding/Android/CMakeLists.txt once the flags above are set.
 
+# --- Minimal-size linking ----------------------------------------------------
+# Drop unreferenced code/data, fold identical functions, hide symbols pulled in
+# from static archives (only our JNIEXPORT entry points need to be exported),
+# and finish ThinLTO codegen at link time.
+target_link_options(BabylonNativeEmbedding PRIVATE
+    "-flto=thin"
+    "-Wl,--gc-sections"
+    "-Wl,--icf=all"
+    "-Wl,--exclude-libs,ALL")
+
 # --- Link-size diagnostics ---------------------------------------------------
 # Emit an lld linker map next to the .so so CI can report exactly which static
 # archives (.a) were pulled into the final library and how many bytes each
