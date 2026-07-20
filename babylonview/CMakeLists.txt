@@ -52,6 +52,13 @@ set(BABYLON_NATIVE_PLUGIN_SHADERCOMPILER OFF CACHE BOOL "" FORCE)
 set(BABYLON_NATIVE_PLUGIN_SHADERTOOL OFF CACHE BOOL "" FORCE)
 set(BABYLON_NATIVE_PLUGIN_SHADERCACHE ON CACHE BOOL "" FORCE)
 
+# Networking / input features not needed by this view. NativeInput is off, so
+# the host must not forward pointer events through the JNI viewPointer* methods
+# (they throw when the plugin is absent).
+set(BABYLON_NATIVE_POLYFILL_WEBSOCKET OFF CACHE BOOL "" FORCE)
+set(BABYLON_NATIVE_POLYFILL_URL OFF CACHE BOOL "" FORCE)
+set(BABYLON_NATIVE_PLUGIN_NATIVEINPUT OFF CACHE BOOL "" FORCE)
+
 # --- Fetch BabylonNative -----------------------------------------------------
 # BabylonNative pulls all of its own dependencies (bgfx, JsRuntimeHost, the JS
 # engine, arcana, glslang, ...) via FetchContent, so a plain clone is enough.
