@@ -72,6 +72,12 @@ FetchContent_MakeAvailable(BabylonNative)
 # `BabylonNativeEmbedding` (the SHARED .so) is defined by
 # BabylonNative/Embedding/Android/CMakeLists.txt once the flags above are set.
 
+# BabylonNative compiles with -Werror. With NativeInput disabled, Embedding's
+# View.cpp leaves `ToLogicalCoords` (used only by the pointer-input paths)
+# unreferenced, which trips -Werror=unused-function. Demote just that warning
+# for the affected target so this trimmed configuration builds.
+target_compile_options(Embedding PRIVATE -Wno-error=unused-function)
+
 # --- Minimal-size linking ----------------------------------------------------
 # Drop unreferenced code/data, fold identical functions, hide symbols pulled in
 # from static archives (only our JNIEXPORT entry points need to be exported),
