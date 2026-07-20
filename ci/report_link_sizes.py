@@ -33,8 +33,15 @@ def main() -> int:
                 continue
             cols = line.split()
             try:
+                vma = int(cols[0], 16)   # VMA column, hex
                 size = int(cols[2], 16)  # Size column, hex
             except (IndexError, ValueError):
+                continue
+            # Only count allocated sections (loaded into the image). Non-allocated
+            # sections (.debug_*, .comment, ...) sit at VMA 0 and are stripped from
+            # the shipped release .so, so excluding them makes the sizes reflect the
+            # actual on-device contribution rather than RelWithDebInfo debug bloat.
+            if vma == 0:
                 continue
             archive = m.group(1)
             per_archive[archive] += size
@@ -45,6 +52,8 @@ def main() -> int:
         return 0
 
     total = sum(per_archive.values())
+    print("Allocated (loadable) size per static archive linked into the .so")
+    print("(non-allocated debug sections excluded; approximates the stripped binary)\n")
     print(f"{'SIZE (KiB)':>12} {'SECTIONS':>9}  ARCHIVE (.a)")
     print(f"{'-' * 12} {'-' * 9}  {'-' * 40}")
     for archive, size in sorted(per_archive.items(), key=lambda kv: -kv[1]):
