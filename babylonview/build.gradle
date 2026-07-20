@@ -2,8 +2,8 @@ plugins {
     id 'com.android.library'
 }
 
-// JavaScript engine used by Babylon Native (V8 or JavaScriptCore).
-def jsEngine = "V8"
+// JavaScript engine used by Babylon Native (V8, JavaScriptCore, QuickJS...).
+def jsEngine = "QuickJS"
 if (project.hasProperty("jsEngine")) {
     jsEngine = project.property("jsEngine")
 }
@@ -24,8 +24,14 @@ def cmakeArguments = [
     "-DBABYLON_NATIVE_EMBEDDING_ANDROID=ON",
     "-DBABYLON_NATIVE_BUILD_APPS=OFF",
     "-DBABYLON_NATIVE_INSTALL=OFF",
+    // Disabled plugins / polyfills.
+    "-DBABYLON_NATIVE_POLYFILL_CANVAS=OFF",
     "-DBABYLON_NATIVE_PLUGIN_NATIVECAMERA=OFF",
-    "-DBABYLON_NATIVE_PLUGIN_NATIVEXR=OFF"
+    "-DBABYLON_NATIVE_PLUGIN_NATIVECAPTURE=OFF",
+    "-DBABYLON_NATIVE_PLUGIN_NATIVEXR=OFF",
+    "-DBABYLON_NATIVE_PLUGIN_TESTUTILS=OFF",
+    "-DBABYLON_NATIVE_PLUGIN_EXTERNALTEXTURE=OFF",
+    "-DBABYLON_NATIVE_PLUGIN_NATIVETRACING=OFF"
 ]
 
 android {

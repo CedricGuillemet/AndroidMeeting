@@ -30,11 +30,16 @@ set(BABYLON_NATIVE_EMBEDDING_ANDROID ON CACHE BOOL "" FORCE)
 set(BABYLON_NATIVE_BUILD_APPS OFF CACHE BOOL "" FORCE)
 set(BABYLON_NATIVE_INSTALL OFF CACHE BOOL "" FORCE)
 
-# ARCore-backed plugins are not needed for a transparent 3D view and would
-# otherwise require extracting the ARCore native libraries at build time.
-# Disable them to keep the AAR lean and the build self-contained.
+# ARCore-backed and other unneeded plugins/polyfills are disabled to keep the
+# AAR lean and the build self-contained. NativeCamera/NativeXr would otherwise
+# require extracting the ARCore native libraries at build time.
+set(BABYLON_NATIVE_POLYFILL_CANVAS OFF CACHE BOOL "" FORCE)
 set(BABYLON_NATIVE_PLUGIN_NATIVECAMERA OFF CACHE BOOL "" FORCE)
+set(BABYLON_NATIVE_PLUGIN_NATIVECAPTURE OFF CACHE BOOL "" FORCE)
 set(BABYLON_NATIVE_PLUGIN_NATIVEXR OFF CACHE BOOL "" FORCE)
+set(BABYLON_NATIVE_PLUGIN_TESTUTILS OFF CACHE BOOL "" FORCE)
+set(BABYLON_NATIVE_PLUGIN_EXTERNALTEXTURE OFF CACHE BOOL "" FORCE)
+set(BABYLON_NATIVE_PLUGIN_NATIVETRACING OFF CACHE BOOL "" FORCE)
 
 # --- Fetch BabylonNative -----------------------------------------------------
 # BabylonNative pulls all of its own dependencies (bgfx, JsRuntimeHost, the JS
