@@ -1,21 +1,52 @@
 #!/usr/bin/env python3
-"""Summarize which static archives (.a) were linked into a binary and how
-many bytes each contributed, by parsing an lld linker map (`-Wl,-Map=...`).
+"""Summarize which static archives (.a) were linked into a binary and how many
+*allocated* bytes each contributed, by parsing an lld linker map
+(`-Wl,-Map=...`).
 
 Usage: report_link_sizes.py <map-file>
 
-The lld map has whitespace-separated columns: VMA LMA Size Align <name>.
-Input lines reference their origin file, e.g.:
+lld input-section lines look like:
 
-        0x... 0x...   0x1a0    4   path/to/libFoo.a(bar.cpp.o):(.text.foo)
+    <VMA> <LMA> <Size> <Align>   path/to/libFoo.a(bar.cpp.o):(.text._foo)
 
-We attribute each input section's Size (column 3, hex) to its owning archive.
+We identify the owning archive and the section name from the `:(.section)`
+suffix, and only count *allocated* sections (code/data that actually ends up in
+the shipped, stripped .so). Non-allocated sections such as `.debug_*`,
+`.comment`, `.note`, relocation and symbol tables are excluded because they are
+stripped from the release library and would otherwise massively inflate the
+numbers (RelWithDebInfo debug info dwarfs the real code size).
+
+The column layout is not relied upon for non-allocated lines (lld leaves the
+address blank there, shifting the columns); allocated lines always have a real
+VMA so `Size` is column index 2.
 """
 import collections
 import re
 import sys
 
 ARCHIVE_RE = re.compile(r"(\S+\.a)\(")
+SECTION_RE = re.compile(r":\((\.[^)]+)\)")
+
+# Prefixes of sections that occupy space in the loaded/stripped image.
+ALLOCATED_PREFIXES = (
+    ".text",
+    ".rodata",
+    ".data",
+    ".bss",
+    ".eh_frame",
+    ".gcc_except_table",
+    ".init_array",
+    ".fini_array",
+    ".preinit_array",
+    ".tdata",
+    ".tbss",
+    ".ARM.extab",
+    ".ARM.exidx",
+)
+
+
+def is_allocated(section: str) -> bool:
+    return section.startswith(ALLOCATED_PREFIXES)
 
 
 def main() -> int:
@@ -28,39 +59,38 @@ def main() -> int:
 
     with open(sys.argv[1], errors="ignore") as fh:
         for line in fh:
-            m = ARCHIVE_RE.search(line)
-            if not m:
+            am = ARCHIVE_RE.search(line)
+            if not am:
+                continue
+            sm = SECTION_RE.search(line)
+            if not sm or not is_allocated(sm.group(1)):
                 continue
             cols = line.split()
             try:
-                vma = int(cols[0], 16)   # VMA column, hex
-                size = int(cols[2], 16)  # Size column, hex
+                size = int(cols[2], 16)  # Size column (allocated lines only)
             except (IndexError, ValueError):
                 continue
-            # Only count allocated sections (loaded into the image). Non-allocated
-            # sections (.debug_*, .comment, ...) sit at VMA 0 and are stripped from
-            # the shipped release .so, so excluding them makes the sizes reflect the
-            # actual on-device contribution rather than RelWithDebInfo debug bloat.
-            if vma == 0:
-                continue
-            archive = m.group(1)
+            archive = am.group(1)
             per_archive[archive] += size
             per_archive_secs[archive] += 1
 
     if not per_archive:
-        print("No archive contributions found in map (empty or unexpected format).")
+        print("No allocated archive contributions found in map "
+              "(empty or unexpected format).")
         return 0
 
     total = sum(per_archive.values())
-    print("Allocated (loadable) size per static archive linked into the .so")
-    print("(non-allocated debug sections excluded; approximates the stripped binary)\n")
+    print("Allocated size per static archive (.a) linked into "
+          "libBabylonNativeEmbedding.so")
+    print("Only loadable code/data sections are counted; debug/reloc/symbol "
+          "sections (stripped from the release .so) are excluded.\n")
     print(f"{'SIZE (KiB)':>12} {'SECTIONS':>9}  ARCHIVE (.a)")
     print(f"{'-' * 12} {'-' * 9}  {'-' * 40}")
     for archive, size in sorted(per_archive.items(), key=lambda kv: -kv[1]):
         name = archive.split("/")[-1]
         print(f"{size / 1024:12.1f} {per_archive_secs[archive]:9d}  {name}")
     print(f"{'-' * 12} {'-' * 9}  {'-' * 40}")
-    print(f"{total / 1024:12.1f} {'':>9}  TOTAL linked .a contribution "
+    print(f"{total / 1024:12.1f} {'':>9}  TOTAL allocated .a contribution "
           f"({total / (1024 * 1024):.2f} MiB)")
     return 0
 
