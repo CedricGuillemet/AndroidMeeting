@@ -1,0 +1,89 @@
+plugins {
+    id 'com.android.library'
+}
+
+// JavaScript engine used by Babylon Native (V8 or JavaScriptCore).
+def jsEngine = "V8"
+if (project.hasProperty("jsEngine")) {
+    jsEngine = project.property("jsEngine")
+}
+
+// Graphics API. OpenGL is required for the transparent GL back-buffer path
+// (SurfaceFlinger blends the RGBA back buffer; alpha == 0 -> transparent).
+def graphics_api = "OpenGL"
+if (project.hasProperty("GRAPHICS_API")) {
+    graphics_api = project.property("GRAPHICS_API")
+}
+
+def cmakeArguments = [
+    "-DANDROID_STL=c++_shared",
+    "-DENABLE_PCH=OFF",
+    "-DGRAPHICS_API=${graphics_api}",
+    "-DNAPI_JAVASCRIPT_ENGINE=${jsEngine}",
+    "-DBABYLON_NATIVE_EMBEDDING=ON",
+    "-DBABYLON_NATIVE_EMBEDDING_ANDROID=ON",
+    "-DBABYLON_NATIVE_BUILD_APPS=OFF",
+    "-DBABYLON_NATIVE_INSTALL=OFF",
+    "-DBABYLON_NATIVE_PLUGIN_NATIVECAMERA=OFF",
+    "-DBABYLON_NATIVE_PLUGIN_NATIVEXR=OFF"
+]
+
+android {
+    namespace = 'com.babylonjs.meeting'
+    compileSdk = 34
+
+    defaultConfig {
+        minSdk = 25
+
+        consumerProguardFiles "consumer-rules.pro"
+
+        ndkVersion = "29.0.14206865"
+        if (project.hasProperty("NDK_VERSION")) {
+            ndkVersion = project.property("NDK_VERSION")
+        }
+
+        externalNativeBuild {
+            cmake {
+                // Only build the embedding .so (and its transitive deps).
+                targets "BabylonNativeEmbedding"
+                abiFilters "arm64-v8a", "armeabi-v7a", "x86", "x86_64"
+                arguments(*cmakeArguments)
+                cppFlags += ["-Wno-deprecated-literal-operator"]
+            }
+        }
+
+        ndk {
+            if (project.hasProperty("ARM64Only")) {
+                abiFilters "arm64-v8a"
+            } else {
+                abiFilters "arm64-v8a", "armeabi-v7a", "x86", "x86_64"
+            }
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            version = '3.22.1+'
+            path = 'CMakeLists.txt'
+        }
+    }
+
+    packaging {
+        jniLibs {
+            // The JS engine may ship multiple copies across sub-projects.
+            pickFirsts += ['lib/*/libv8android.so', 'lib/*/libjsc.so', 'lib/*/libc++_shared.so']
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled = false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+}

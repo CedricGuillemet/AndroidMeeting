@@ -1,0 +1,14 @@
+# Gradle / Android build outputs
+.gradle/
+build/
+*/build/
+local.properties
+
+# CMake / native build staging
+.cxx/
+Build/
+
+# IDE
+.idea/
+*.iml
+.DS_Store

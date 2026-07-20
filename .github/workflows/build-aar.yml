@@ -1,0 +1,55 @@
+name: Build AAR
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-aar:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install NDK, CMake and Ninja
+        run: |
+          sdkmanager --install "ndk;29.0.14206865" "cmake;3.22.1"
+          sudo apt-get update
+          sudo apt-get install -y ninja-build
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build BabylonView AAR
+        # BabylonNative + all of its dependencies (bgfx, V8, glslang, ...) are
+        # fetched and compiled by the external CMake build. Restrict CI to a
+        # single ABI to keep the native build within runner time/disk limits.
+        run: ./gradlew :babylonview:assembleRelease -PARM64Only --no-daemon --stacktrace
+
+      - name: Log native library (.so) sizes
+        run: |
+          echo "libBabylonNativeEmbedding.so sizes:"
+          find babylonview/build -name 'libBabylonNativeEmbedding.so' -print0 \
+            | xargs -0 --no-run-if-empty ls -lh
+          echo "All .so sizes under build outputs:"
+          find babylonview/build -name '*.so' -printf '%s\t%p\n' | sort -rn \
+            | awk '{ printf "%10.2f MiB  %s\n", $1/1048576, $2 }'
+
+      - name: Upload AAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: babylonview-aar
+          path: babylonview/build/outputs/aar/*.aar
+          if-no-files-found: error
