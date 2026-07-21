@@ -70,12 +70,12 @@ set(BABYLON_NATIVE_POLYFILL_URL OFF CACHE BOOL "" FORCE)
 # --- Fetch BabylonNative -----------------------------------------------------
 # BabylonNative pulls all of its own dependencies (bgfx, JsRuntimeHost, the JS
 # engine, arcana, glslang, ...) via FetchContent, so a plain clone is enough.
-# Pinned to the upstream commit the local multiview JNI source was authored
-# against (origin/master @ 64f545de) so the facade API it calls matches. Pinning
-# a commit also avoids a moving branch tip being served stale from the cache.
+# Pinned to an upstream commit that supports the QuickJS engine. The local
+# multiview JNI source calls the Embedding facade API, which is unchanged from
+# the source's authoring base up to here.
 FetchContent_Declare(BabylonNative
     GIT_REPOSITORY https://github.com/BabylonJS/BabylonNative.git
-    GIT_TAG 64f545de)
+    GIT_TAG fcfda740a0834623deeecc48bae5cfa62090b5e0)
 
 FetchContent_MakeAvailable(BabylonNative)
 

@@ -21,7 +21,9 @@ def cmakeArguments = [
     "-DGRAPHICS_API=${graphics_api}",
     "-DNAPI_JAVASCRIPT_ENGINE=${jsEngine}",
     "-DBABYLON_NATIVE_EMBEDDING=ON",
-    "-DBABYLON_NATIVE_EMBEDDING_ANDROID=ON",
+    // Upstream's Android JNI layer is disabled; CMakeLists.txt builds our own
+    // multiview BabylonNativeEmbedding target from a local source.
+    "-DBABYLON_NATIVE_EMBEDDING_ANDROID=OFF",
     "-DBABYLON_NATIVE_BUILD_APPS=OFF",
     "-DBABYLON_NATIVE_INSTALL=OFF",
     // Disabled plugins / polyfills.
