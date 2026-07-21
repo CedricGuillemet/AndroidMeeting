@@ -98,6 +98,9 @@ public final class BabylonNative {
 
     public static native void runtimeLoadScript(long handle, String url);
 
+    /** Load a GPU shader cache directly from an Android asset (no on-disk copy). */
+    public static native void runtimeLoadShaderCache(long handle, String assetName);
+
     public static native void runtimeEval(long handle, String source, String sourceUrl);
 
     // No per-Runtime Suspend/Resume here: each Runtime auto-subscribes to
@@ -127,6 +130,21 @@ public final class BabylonNative {
     public static native long viewAttach(long runtimeHandle, Surface surface);
 
     public static native void viewDetach(long handle);
+
+    // -------------------------------------------------------------------
+    // Multiview: mirror the primary render into secondary SurfaceViews so
+    // several views (e.g. across displays) can show the same scene while a
+    // single view drives rendering (bgfx allows one render device per process).
+    // -------------------------------------------------------------------
+
+    /** Register a secondary SurfaceView to mirror the main render. */
+    public static native void runtimeAddSecondarySurface(long runtimeHandle, Surface surface);
+
+    /** Detach a secondary SurfaceView and destroy its GL context. */
+    public static native void runtimeRemoveSecondarySurface(long runtimeHandle, Surface surface);
+
+    /** Mirror the main backbuffer to secondary surfaces (call once per frame). */
+    public static native void runtimeMirrorFrame(long runtimeHandle);
 
     public static native void viewRenderFrame(long handle);
 

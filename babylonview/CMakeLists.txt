@@ -1,8 +1,16 @@
 # External CMake build for the AndroidMeeting Babylon view AAR.
 #
-# This build FETCHES BabylonJS/BabylonNative from GitHub and enables the
-# cross-platform `Embedding` facade together with the Android JNI interop
-# layer. The result is a single shared library:
+# This build FETCHES upstream BabylonJS/BabylonNative and enables the
+# cross-platform `Embedding` facade (Runtime + View). Upstream's Android JNI
+# interop layer is NOT used; instead this module builds its OWN
+# `BabylonNativeEmbedding` shared library from a local, multiview-capable copy
+# of the JNI source (embedding/cpp/BabylonNativeEmbedding.cpp). That file adds
+# the secondary-surface mirror API (runtimeAddSecondarySurface /
+# runtimeRemoveSecondarySurface / runtimeMirrorFrame) and an asset shader-cache
+# loader on top of the upstream Embedding facade — the only source that needs to
+# diverge from upstream, so it lives here rather than in a BabylonNative fork.
+#
+# The result is a single shared library:
 #
 #     libBabylonNativeEmbedding.so
 #
@@ -22,9 +30,12 @@ project(AndroidMeetingBabylon)
 include(FetchContent)
 
 # --- Babylon Native configuration -------------------------------------------
-# Build the Embedding facade (Runtime + View) and its Android JNI layer.
+# Build the cross-platform Embedding facade (Runtime + View). Do NOT build
+# upstream's Android JNI layer — this module defines its own multiview-capable
+# BabylonNativeEmbedding target below, so upstream's single-output one would only
+# clash on the target name.
 set(BABYLON_NATIVE_EMBEDDING ON CACHE BOOL "" FORCE)
-set(BABYLON_NATIVE_EMBEDDING_ANDROID ON CACHE BOOL "" FORCE)
+set(BABYLON_NATIVE_EMBEDDING_ANDROID OFF CACHE BOOL "" FORCE)
 
 # We only want the library; skip the sample apps and install targets.
 set(BABYLON_NATIVE_BUILD_APPS OFF CACHE BOOL "" FORCE)
@@ -59,17 +70,41 @@ set(BABYLON_NATIVE_POLYFILL_URL OFF CACHE BOOL "" FORCE)
 # --- Fetch BabylonNative -----------------------------------------------------
 # BabylonNative pulls all of its own dependencies (bgfx, JsRuntimeHost, the JS
 # engine, arcana, glslang, ...) via FetchContent, so a plain clone is enough.
-# Pin GIT_TAG to a specific commit for fully reproducible CI builds and to avoid
-# a moving branch tip being served stale from the FetchContent/_deps cache.
-# This upstream commit builds with the QuickJS engine and the single-output view.
+# Pinned to the upstream commit the local multiview JNI source was authored
+# against (origin/master @ 64f545de) so the facade API it calls matches. Pinning
+# a commit also avoids a moving branch tip being served stale from the cache.
 FetchContent_Declare(BabylonNative
     GIT_REPOSITORY https://github.com/BabylonJS/BabylonNative.git
-    GIT_TAG fcfda740a0834623deeecc48bae5cfa62090b5e0)
+    GIT_TAG 64f545de)
 
 FetchContent_MakeAvailable(BabylonNative)
 
-# `BabylonNativeEmbedding` (the SHARED .so) is defined by
-# BabylonNative/Embedding/Android/CMakeLists.txt once the flags above are set.
+# --- Our own Android JNI interop layer (multiview) ---------------------------
+# Build libBabylonNativeEmbedding.so from the local multiview JNI source instead
+# of upstream's Embedding/Android target (disabled above). It links against the
+# upstream Embedding facade and uses upstream's unmodified Android platform
+# header (RuntimeHandle.h) from the fetched tree.
+add_library(BabylonNativeEmbedding SHARED
+    "${CMAKE_CURRENT_SOURCE_DIR}/embedding/cpp/BabylonNativeEmbedding.cpp")
+
+target_include_directories(BabylonNativeEmbedding PRIVATE
+    "${babylonnative_SOURCE_DIR}/Embedding/Include/Platform/Android")
+
+target_link_libraries(BabylonNativeEmbedding
+    PRIVATE Embedding          # cross-platform facade (propagates its public defs/includes)
+    PRIVATE AndroidExtensions
+    PRIVATE android            # ANativeWindow_fromSurface
+    PRIVATE log
+    PRIVATE EGL                # required by bgfx GL backend + secondary-surface mirror
+    PRIVATE GLESv3
+    PRIVATE -lz)
+
+# The multiview JNI source uses Babylon::Plugins::ShaderCache directly (guarded by
+# BABYLON_NATIVE_PLUGIN_SHADERCACHE). The facade links ShaderCache PRIVATEly, so
+# link it here too to bring in its header + symbols.
+if(TARGET ShaderCache)
+    target_link_libraries(BabylonNativeEmbedding PRIVATE ShaderCache)
+endif()
 
 # --- Minimal-size linking ----------------------------------------------------
 # Drop unreferenced code/data, fold identical functions, hide symbols pulled in
