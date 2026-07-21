@@ -46,6 +46,16 @@ def cmakeArguments = [
     "-DBABYLON_NATIVE_POLYFILL_URL=OFF"
 ]
 
+// ABIs to build. Defaults to the full shipping set. Restrict with -PARM64Only
+// (arm64 only) or -PtargetAbis=arm64-v8a,x86_64 (comma-separated) to cut native
+// build time — e.g. CI builds device + emulator ABIs only.
+def abiList = ["arm64-v8a", "armeabi-v7a", "x86", "x86_64"]
+if (project.hasProperty("ARM64Only")) {
+    abiList = ["arm64-v8a"]
+} else if (project.hasProperty("targetAbis")) {
+    abiList = project.property("targetAbis").toString().split(",").collect { it.trim() }.findAll { it }
+}
+
 android {
     namespace = 'com.babylonjs.meeting'
     compileSdk = 34
@@ -64,7 +74,7 @@ android {
             cmake {
                 // Only build the embedding .so (and its transitive deps).
                 targets "BabylonNativeEmbedding"
-                abiFilters "arm64-v8a", "armeabi-v7a", "x86", "x86_64"
+                abiFilters(abiList as String[])
                 arguments(*cmakeArguments)
                 // Minimal-size codegen applied to the whole native build
                 // (BabylonNative + all fetched deps). -Oz optimizes hard for
@@ -84,11 +94,7 @@ android {
         }
 
         ndk {
-            if (project.hasProperty("ARM64Only")) {
-                abiFilters "arm64-v8a"
-            } else {
-                abiFilters "arm64-v8a", "armeabi-v7a", "x86", "x86_64"
-            }
+            abiFilters(abiList as String[])
         }
     }
 
