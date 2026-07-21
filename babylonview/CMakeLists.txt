@@ -59,15 +59,29 @@ set(BABYLON_NATIVE_POLYFILL_URL OFF CACHE BOOL "" FORCE)
 # --- Fetch BabylonNative -----------------------------------------------------
 # BabylonNative pulls all of its own dependencies (bgfx, JsRuntimeHost, the JS
 # engine, arcana, glslang, ...) via FetchContent, so a plain clone is enough.
-# Pin GIT_TAG to a commit/tag for fully reproducible CI builds.
+#
+# We fetch the CedricGuillemet/BabylonNative fork's `externaltextureoutput`
+# branch: it carries the external-texture-output work that backs the Android
+# secondary-surface mirror API (runtimeAddSecondarySurface /
+# runtimeRemoveSecondarySurface / runtimeMirrorFrame) and the asset-based
+# runtimeLoadShaderCache entry point. Those JNI symbols do not exist on upstream
+# master. Pin GIT_TAG to a commit for fully reproducible CI builds.
 FetchContent_Declare(BabylonNative
-    GIT_REPOSITORY https://github.com/BabylonJS/BabylonNative.git
-    GIT_TAG master)
+    GIT_REPOSITORY https://github.com/CedricGuillemet/BabylonNative.git
+    GIT_TAG externaltextureoutput
+    GIT_SUBMODULES_RECURSE ON)
 
 FetchContent_MakeAvailable(BabylonNative)
 
 # `BabylonNativeEmbedding` (the SHARED .so) is defined by
 # BabylonNative/Embedding/Android/CMakeLists.txt once the flags above are set.
+
+# The Android JNI can load a GPU shader cache via Babylon::Plugins::ShaderCache
+# (runtimeLoadShaderCache / RuntimeOptions.shaderCachePath). Link the plugin so
+# its symbols are present in the interop library when the fork build exposes it.
+if(TARGET ShaderCache)
+    target_link_libraries(BabylonNativeEmbedding PRIVATE ShaderCache)
+endif()
 
 # --- Minimal-size linking ----------------------------------------------------
 # Drop unreferenced code/data, fold identical functions, hide symbols pulled in
