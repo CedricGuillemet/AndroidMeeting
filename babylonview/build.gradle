@@ -3,10 +3,7 @@ plugins {
 }
 
 // JavaScript engine used by Babylon Native (V8, JavaScriptCore, QuickJS...).
-// NOTE: pinned to V8. The externaltextureoutput fork's JsRuntimeHost only
-// supports V8 (QuickJS fails configure with "Unsupported JavaScript engine"),
-// and the room-host-voice consumer builds the same fork with V8.
-def jsEngine = "V8"
+def jsEngine = "QuickJS"
 if (project.hasProperty("jsEngine")) {
     jsEngine = project.property("jsEngine")
 }

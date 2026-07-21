@@ -9,16 +9,11 @@ transparent 3D view.
 - **Native `.so`** — `libBabylonNativeEmbedding.so`, produced by an *external
   CMake build* (`babylonview/CMakeLists.txt`) that **fetches** BabylonNative via
   CMake `FetchContent` and enables the cross-platform `Embedding` facade plus
-  the `Embedding/Android` JNI interop layer. It fetches the
-  `CedricGuillemet/BabylonNative` fork's `externaltextureoutput` branch, which
-  adds the Android secondary-surface mirror API and an asset-based shader-cache
-  loader on top of upstream.
+  the `Embedding/Android` JNI interop layer.
 - **Java definitions**
   - `com.babylonjs.embedding.BabylonNative` — the JNI binding whose native
     methods map to the `Java_com_babylonjs_embedding_BabylonNative_*` symbols in
-    BabylonNative's `Embedding/Android/.../BabylonNativeEmbedding.cpp`. Includes
-    the fork's `runtimeLoadShaderCache`, `runtimeAddSecondarySurface`,
-    `runtimeRemoveSecondarySurface` and `runtimeMirrorFrame` entry points.
+    BabylonNative's `Embedding/Android/.../BabylonNativeEmbedding.cpp`.
   - `com.babylonjs.meeting.BabylonView` — a `SurfaceView`-based view configured
     for **transparency**.
 
