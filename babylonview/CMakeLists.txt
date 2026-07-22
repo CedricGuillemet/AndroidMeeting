@@ -52,16 +52,38 @@ set(BABYLON_NATIVE_PLUGIN_TESTUTILS OFF CACHE BOOL "" FORCE)
 set(BABYLON_NATIVE_PLUGIN_EXTERNALTEXTURE OFF CACHE BOOL "" FORCE)
 set(BABYLON_NATIVE_PLUGIN_NATIVETRACING OFF CACHE BOOL "" FORCE)
 
-# Drop image loading (decode), image encoding, and runtime shader compilation
-# to shrink the shipped .so. With shader compilation off, the app MUST provide a
-# prebuilt GPU shader cache at runtime via RuntimeOptions.shaderCachePath; the
-# ShaderCache plugin stays enabled so that load/save path works.
+# Image loading (decode) and image encoding are dropped in BOTH flavors to keep
+# the shipped .so small.
 set(BABYLON_NATIVE_PLUGIN_NATIVEENGINE_LOAD_IMAGES OFF CACHE BOOL "" FORCE)
-set(BABYLON_NATIVE_PLUGIN_NATIVEENGINE_COMPILESHADERS OFF CACHE BOOL "" FORCE)
 set(BABYLON_NATIVE_PLUGIN_NATIVEENCODING OFF CACHE BOOL "" FORCE)
-set(BABYLON_NATIVE_PLUGIN_SHADERCOMPILER OFF CACHE BOOL "" FORCE)
-set(BABYLON_NATIVE_PLUGIN_SHADERTOOL OFF CACHE BOOL "" FORCE)
+
+# The ShaderCache plugin (GPU shader cache load/save) is always enabled.
 set(BABYLON_NATIVE_PLUGIN_SHADERCACHE ON CACHE BOOL "" FORCE)
+
+# The offline ShaderTool (compiles .fx files into a cache at build time) is not
+# needed for either flavor.
+set(BABYLON_NATIVE_PLUGIN_SHADERTOOL OFF CACHE BOOL "" FORCE)
+
+# Runtime shader compilation toggle -- this is what distinguishes the two AAR
+# flavors produced by CI:
+#
+#   AM_DYNAMIC_SHADERS=OFF (default): no runtime shader compiler. Smallest .so,
+#     but the app MUST supply a prebuilt GPU shader cache at runtime via
+#     RuntimeOptions.shaderCachePath -- otherwise nothing renders.
+#
+#   AM_DYNAMIC_SHADERS=ON: bundles the shader compiler (ShaderCompiler ->
+#     glslang + SPIRV-Cross). Larger .so, but compiles shaders at runtime, so no
+#     prebuilt cache is required.
+option(AM_DYNAMIC_SHADERS "Include the runtime shader compiler (glslang/SPIRV-Cross)." OFF)
+if(AM_DYNAMIC_SHADERS)
+    set(BABYLON_NATIVE_PLUGIN_NATIVEENGINE_COMPILESHADERS ON CACHE BOOL "" FORCE)
+    set(BABYLON_NATIVE_PLUGIN_SHADERCOMPILER ON CACHE BOOL "" FORCE)
+    message(STATUS "AndroidMeeting: runtime shader compilation ENABLED (dynamic-shaders flavor).")
+else()
+    set(BABYLON_NATIVE_PLUGIN_NATIVEENGINE_COMPILESHADERS OFF CACHE BOOL "" FORCE)
+    set(BABYLON_NATIVE_PLUGIN_SHADERCOMPILER OFF CACHE BOOL "" FORCE)
+    message(STATUS "AndroidMeeting: runtime shader compilation DISABLED (prebuilt shader cache required).")
+endif()
 
 # Networking polyfills not needed by this view.
 set(BABYLON_NATIVE_POLYFILL_WEBSOCKET OFF CACHE BOOL "" FORCE)

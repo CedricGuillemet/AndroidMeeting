@@ -45,8 +45,17 @@ scene.clearColor = new BABYLON.Color4(0, 0, 0, 0);
 
 ## Building
 
+Two flavors of the AAR can be built, differing only in whether the runtime
+shader compiler is bundled:
+
 ```bash
+# Shader-cache flavor (default): smallest .so, NO runtime shader compiler.
+# A prebuilt GPU shader cache is REQUIRED at runtime (RuntimeOptions.shaderCachePath).
 ./gradlew :babylonview:assembleRelease
+
+# Dynamic-shaders flavor: bundles the glslang/SPIRV-Cross shader compiler, so
+# shaders compile at runtime and no prebuilt cache is needed (larger .so).
+./gradlew :babylonview:assembleRelease -PdynamicShaders
 ```
 
 The first configure fetches BabylonNative and all of its dependencies (bgfx,
@@ -57,7 +66,8 @@ build is long. Restrict to a single ABI while iterating:
 ./gradlew :babylonview:assembleRelease -PARM64Only
 ```
 
-Output: `babylonview/build/outputs/aar/babylonview-release.aar`.
+Output: `babylonview/build/outputs/aar/babylonview-release.aar` (both flavors
+write to the same path — build one at a time, or see CI which stages both).
 
 ### Requirements
 
@@ -66,8 +76,14 @@ Output: `babylonview/build/outputs/aar/babylonview-release.aar`.
 
 ## CI
 
-`.github/workflows/build-aar.yml` builds the AAR on GitHub Actions (single ABI)
-and uploads it as the `babylonview-aar` artifact.
+`.github/workflows/build-aar.yml` builds **both** AAR flavors on GitHub Actions
+(device + emulator ABIs) and uploads them together as the `babylonview-aars`
+artifact:
+
+- `babylonview-shadercache-required-release.aar` — no runtime shader compiler;
+  **requires a prebuilt shader cache** (`RuntimeOptions.shaderCachePath`).
+- `babylonview-dynamic-shaders-release.aar` — bundles the shader compiler and
+  **supports runtime (dynamic) shader compilation**; no prebuilt cache needed.
 
 ## Native build size trade-offs
 
@@ -79,8 +95,11 @@ the native build:
   decoding of PNG/JPEG/WebP is not available.
 - **Image encoding** (`NATIVEENCODING=OFF`) — no native PNG encoding /
   `EncodeImageAsync` (screenshots, asset export).
-- **Runtime shader compilation** (`NATIVEENGINE_COMPILESHADERS=OFF`, plus
-  `SHADERCOMPILER`/`SHADERTOOL` off) — removes glslang + SPIRV-Cross.
+- **Runtime shader compilation** (`NATIVEENGINE_COMPILESHADERS` + `SHADERCOMPILER`)
+  — removes glslang + SPIRV-Cross. This is the **shader-cache flavor** (default,
+  `-PdynamicShaders` off). The **dynamic-shaders flavor** (`-PdynamicShaders`)
+  re-enables them so shaders compile at runtime. `SHADERCACHE` (the cache
+  load/save plugin) stays enabled in both.
 - **Networking polyfills**: WebSocket (`POLYFILL_WEBSOCKET=OFF`) and the JS
   `URL` global (`POLYFILL_URL=OFF`). `fetch`/`XMLHttpRequest` remain available
   (XMLHttpRequest is always linked by the Embedding layer and cannot be gated

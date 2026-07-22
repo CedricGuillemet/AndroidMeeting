@@ -15,6 +15,12 @@ if (project.hasProperty("GRAPHICS_API")) {
     graphics_api = project.property("GRAPHICS_API")
 }
 
+// Shader flavor. By default the AAR ships WITHOUT the runtime shader compiler
+// (smallest .so; a prebuilt shader cache is required at runtime). Pass
+// -PdynamicShaders to bundle the glslang/SPIRV-Cross shader compiler so shaders
+// compile at runtime with no prebuilt cache.
+def dynamicShaders = project.hasProperty("dynamicShaders")
+
 def cmakeArguments = [
     "-DANDROID_STL=c++_shared",
     "-DENABLE_PCH=OFF",
@@ -34,15 +40,15 @@ def cmakeArguments = [
     "-DBABYLON_NATIVE_PLUGIN_TESTUTILS=OFF",
     "-DBABYLON_NATIVE_PLUGIN_EXTERNALTEXTURE=OFF",
     "-DBABYLON_NATIVE_PLUGIN_NATIVETRACING=OFF",
-    // Image loading (decode) and encoding, plus runtime shader compilation, are
-    // disabled to shrink the .so. A prebuilt GPU shader cache must be supplied
-    // at runtime via RuntimeOptions.shaderCachePath (ShaderCache stays enabled).
+    // Image loading (decode) and encoding are disabled in both flavors to shrink
+    // the .so. The ShaderCache plugin is always enabled.
     "-DBABYLON_NATIVE_PLUGIN_NATIVEENGINE_LOAD_IMAGES=OFF",
-    "-DBABYLON_NATIVE_PLUGIN_NATIVEENGINE_COMPILESHADERS=OFF",
     "-DBABYLON_NATIVE_PLUGIN_NATIVEENCODING=OFF",
-    "-DBABYLON_NATIVE_PLUGIN_SHADERCOMPILER=OFF",
-    "-DBABYLON_NATIVE_PLUGIN_SHADERTOOL=OFF",
     "-DBABYLON_NATIVE_PLUGIN_SHADERCACHE=ON",
+    // Runtime shader compilation toggle (see CMakeLists.txt). OFF by default
+    // (prebuilt shader cache required); -PdynamicShaders flips it ON to bundle
+    // the glslang/SPIRV-Cross shader compiler for runtime compilation.
+    "-DAM_DYNAMIC_SHADERS=${dynamicShaders ? 'ON' : 'OFF'}",
     // Networking polyfills not needed by this view.
     "-DBABYLON_NATIVE_POLYFILL_WEBSOCKET=OFF",
     "-DBABYLON_NATIVE_POLYFILL_URL=OFF"

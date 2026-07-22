@@ -32,51 +32,50 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Build BabylonView AAR
+      # ---------------------------------------------------------------------
+      # Flavor 1: shader-cache AAR (no runtime shader compiler).
+      # Smallest .so. The app MUST supply a prebuilt GPU shader cache at runtime
+      # via RuntimeOptions.shaderCachePath, or nothing renders.
+      # ---------------------------------------------------------------------
+      - name: Build shader-cache AAR (prebuilt cache required)
         # BabylonNative + all of its dependencies (bgfx, QuickJS, ...) are
         # fetched and compiled by the external CMake build. Build the device
         # (arm64-v8a) and emulator (x86_64) ABIs so the AAR runs on both.
         run: ./gradlew :babylonview:assembleRelease -PtargetAbis=arm64-v8a,x86_64 --no-daemon --stacktrace
 
-      - name: Log native library (.so) sizes
-        run: |
-          echo "libBabylonNativeEmbedding.so sizes:"
-          find babylonview/build -name 'libBabylonNativeEmbedding.so' -print0 \
-            | xargs -0 --no-run-if-empty ls -lh
-          echo "All .so sizes under build outputs:"
-          find babylonview/build -name '*.so' -printf '%s\t%p\n' | sort -rn \
-            | awk '{ printf "%10.2f MiB  %s\n", $1/1048576, $2 }'
+      - name: Inspect shader-cache AAR
+        run: bash ci/inspect.sh "shader-cache (prebuilt cache required)"
 
-      - name: Verify JNI symbols are exported
-        # The size flags (hidden visibility, --exclude-libs, gc/icf) must not
-        # strip the JNIEXPORT entry points the AAR's Java layer binds against.
+      - name: Stage shader-cache AAR
         run: |
-          SO=$(find babylonview/build -path '*stripReleaseDebugSymbols*arm64-v8a*' -name 'libBabylonNativeEmbedding.so' | head -n1)
-          [ -z "$SO" ] && SO=$(find babylonview/build -name 'libBabylonNativeEmbedding.so' | head -n1)
-          echo "Inspecting: $SO"
-          NM=$(find "$ANDROID_HOME/ndk" -name 'llvm-nm' | head -n1)
-          COUNT=$("$NM" -D --defined-only "$SO" | grep -c 'Java_com_babylonjs_embedding_BabylonNative_')
-          echo "Exported Java_com_babylonjs_embedding_BabylonNative_* symbols: $COUNT"
-          if [ "$COUNT" -lt 1 ]; then
-            echo "::error::No BabylonNative JNI symbols exported; size flags broke the ABI."
-            exit 1
-          fi
+          mkdir -p artifacts
+          cp babylonview/build/outputs/aar/babylonview-release.aar \
+             artifacts/babylonview-shadercache-required-release.aar
 
-      - name: Report static archive (.a) link contributions
-        # Parses the lld linker map emitted via -Wl,-Map to show which static
-        # libraries were pulled into libBabylonNativeEmbedding.so and their size.
+      # Fully isolate the two native builds so the diagnostics above/below and
+      # the packaged .so are unambiguous.
+      - name: Clean native build between flavors
+        run: rm -rf babylonview/build babylonview/.cxx
+
+      # ---------------------------------------------------------------------
+      # Flavor 2: dynamic-shaders AAR (bundles the glslang/SPIRV-Cross shader
+      # compiler). Larger .so, but compiles shaders at runtime -- no prebuilt
+      # cache required.
+      # ---------------------------------------------------------------------
+      - name: Build dynamic-shaders AAR (runtime shader compiler)
+        run: ./gradlew :babylonview:assembleRelease -PdynamicShaders -PtargetAbis=arm64-v8a,x86_64 --no-daemon --stacktrace
+
+      - name: Inspect dynamic-shaders AAR
+        run: bash ci/inspect.sh "dynamic shaders (runtime compiler)"
+
+      - name: Stage dynamic-shaders AAR
         run: |
-          MAP=$(find babylonview -name 'BabylonNativeEmbedding.map' | head -n1)
-          echo "Linker map: ${MAP:-<not found>}"
-          if [ -n "$MAP" ]; then
-            python3 ci/report_link_sizes.py "$MAP"
-          else
-            echo "No linker map found; skipping .a report."
-          fi
+          cp babylonview/build/outputs/aar/babylonview-release.aar \
+             artifacts/babylonview-dynamic-shaders-release.aar
 
-      - name: Upload AAR
+      - name: Upload AARs
         uses: actions/upload-artifact@v4
         with:
-          name: babylonview-aar
-          path: babylonview/build/outputs/aar/*.aar
+          name: babylonview-aars
+          path: artifacts/*.aar
           if-no-files-found: error
