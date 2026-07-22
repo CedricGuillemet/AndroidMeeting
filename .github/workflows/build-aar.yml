@@ -10,6 +10,30 @@ jobs:
   build-aar:
     runs-on: ubuntu-latest
 
+    # Two independent jobs, one per shader flavor, each producing its own
+    # artifact so the size difference between them is easy to compare.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Flavor 1: no runtime shader compiler. Smallest .so. The app MUST
+          # supply a prebuilt GPU shader cache at runtime
+          # (RuntimeOptions.shaderCachePath), or nothing renders.
+          - flavor: shader-cache
+            gradleArgs: ""
+            label: "shader-cache (prebuilt cache required)"
+            aar: babylonview-shadercache-required-release.aar
+            artifact: babylonview-shadercache-required-aar
+          # Flavor 2: bundles the glslang/SPIRV-Cross shader compiler. Larger
+          # .so, but compiles shaders at runtime -- no prebuilt cache required.
+          - flavor: dynamic-shaders
+            gradleArgs: "-PdynamicShaders"
+            label: "dynamic shaders (runtime compiler)"
+            aar: babylonview-dynamic-shaders-release.aar
+            artifact: babylonview-dynamic-shaders-aar
+
+    name: build-${{ matrix.flavor }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -32,50 +56,24 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      # ---------------------------------------------------------------------
-      # Flavor 1: shader-cache AAR (no runtime shader compiler).
-      # Smallest .so. The app MUST supply a prebuilt GPU shader cache at runtime
-      # via RuntimeOptions.shaderCachePath, or nothing renders.
-      # ---------------------------------------------------------------------
-      - name: Build shader-cache AAR (prebuilt cache required)
-        # BabylonNative + all of its dependencies (bgfx, QuickJS, ...) are
-        # fetched and compiled by the external CMake build. Build the device
-        # (arm64-v8a) and emulator (x86_64) ABIs so the AAR runs on both.
-        run: ./gradlew :babylonview:assembleRelease -PtargetAbis=arm64-v8a,x86_64 --no-daemon --stacktrace
+      - name: Build ${{ matrix.flavor }} AAR
+        # BabylonNative + all of its dependencies (bgfx, QuickJS, and -- for the
+        # dynamic flavor -- glslang/SPIRV-Cross) are fetched and compiled by the
+        # external CMake build. Build the device (arm64-v8a) and emulator
+        # (x86_64) ABIs so the AAR runs on both.
+        run: ./gradlew :babylonview:assembleRelease ${{ matrix.gradleArgs }} -PtargetAbis=arm64-v8a,x86_64 --no-daemon --stacktrace
 
-      - name: Inspect shader-cache AAR
-        run: bash ci/inspect.sh "shader-cache (prebuilt cache required)"
+      - name: Inspect ${{ matrix.flavor }} AAR
+        run: bash ci/inspect.sh "${{ matrix.label }}"
 
-      - name: Stage shader-cache AAR
+      - name: Stage ${{ matrix.flavor }} AAR
         run: |
           mkdir -p artifacts
-          cp babylonview/build/outputs/aar/babylonview-release.aar \
-             artifacts/babylonview-shadercache-required-release.aar
+          cp babylonview/build/outputs/aar/babylonview-release.aar "artifacts/${{ matrix.aar }}"
 
-      # Fully isolate the two native builds so the diagnostics above/below and
-      # the packaged .so are unambiguous.
-      - name: Clean native build between flavors
-        run: rm -rf babylonview/build babylonview/.cxx
-
-      # ---------------------------------------------------------------------
-      # Flavor 2: dynamic-shaders AAR (bundles the glslang/SPIRV-Cross shader
-      # compiler). Larger .so, but compiles shaders at runtime -- no prebuilt
-      # cache required.
-      # ---------------------------------------------------------------------
-      - name: Build dynamic-shaders AAR (runtime shader compiler)
-        run: ./gradlew :babylonview:assembleRelease -PdynamicShaders -PtargetAbis=arm64-v8a,x86_64 --no-daemon --stacktrace
-
-      - name: Inspect dynamic-shaders AAR
-        run: bash ci/inspect.sh "dynamic shaders (runtime compiler)"
-
-      - name: Stage dynamic-shaders AAR
-        run: |
-          cp babylonview/build/outputs/aar/babylonview-release.aar \
-             artifacts/babylonview-dynamic-shaders-release.aar
-
-      - name: Upload AARs
+      - name: Upload ${{ matrix.flavor }} AAR
         uses: actions/upload-artifact@v4
         with:
-          name: babylonview-aars
-          path: artifacts/*.aar
+          name: ${{ matrix.artifact }}
+          path: artifacts/${{ matrix.aar }}
           if-no-files-found: error

@@ -42,3 +42,11 @@ if [ -n "${MAP}" ]; then
 else
   echo "No linker map found; skipping .a report."
 fi
+
+# Surface the shipped (stripped) arm64-v8a .so size in the job summary so the
+# two flavors are easy to compare at a glance.
+if [ -n "${GITHUB_STEP_SUMMARY:-}" ] && [ -n "${SO}" ]; then
+  SIZE=$(stat -c %s "${SO}")
+  printf '### %s\n\n- Stripped `libBabylonNativeEmbedding.so` (arm64-v8a): **%.2f MiB** (%s bytes)\n' \
+    "${LABEL}" "$(awk "BEGIN{print ${SIZE}/1048576}")" "${SIZE}" >> "${GITHUB_STEP_SUMMARY}"
+fi
