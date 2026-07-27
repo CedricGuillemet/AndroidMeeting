@@ -10,6 +10,13 @@ jobs:
   build-aar:
     runs-on: ubuntu-latest
 
+    # NDK version used to build the AAR. Pinned to match the consuming Teams app
+    # (ext.versions.ndk) so the produced libc++_shared.so is ABI-compatible with
+    # the one the app bundles. Change here to re-target a different NDK.
+    env:
+      NDK_VERSION: "27.2.12479018"
+      CMAKE_VERSION: "3.22.1"
+
     # Two independent jobs, one per shader flavor, each producing its own
     # artifact so the size difference between them is easy to compare.
     strategy:
@@ -49,7 +56,7 @@ jobs:
 
       - name: Install NDK, CMake and Ninja
         run: |
-          sdkmanager --install "ndk;29.0.14206865" "cmake;3.22.1"
+          sdkmanager --install "ndk;${NDK_VERSION}" "cmake;${CMAKE_VERSION}"
           sudo apt-get update
           sudo apt-get install -y ninja-build
 
@@ -60,8 +67,9 @@ jobs:
         # BabylonNative + all of its dependencies (bgfx, QuickJS, and -- for the
         # dynamic flavor -- glslang/SPIRV-Cross) are fetched and compiled by the
         # external CMake build. Build the device (arm64-v8a) and emulator
-        # (x86_64) ABIs so the AAR runs on both.
-        run: ./gradlew :babylonview:assembleRelease ${{ matrix.gradleArgs }} -PtargetAbis=arm64-v8a,x86_64 --no-daemon --stacktrace
+        # (x86_64) ABIs so the AAR runs on both. NDK_VERSION is passed through so
+        # the module builds against the app-matched NDK.
+        run: ./gradlew :babylonview:assembleRelease ${{ matrix.gradleArgs }} -PtargetAbis=arm64-v8a,x86_64 -PNDK_VERSION=${NDK_VERSION} --no-daemon --stacktrace
 
       - name: Inspect ${{ matrix.flavor }} AAR
         run: bash ci/inspect.sh "${{ matrix.label }}"

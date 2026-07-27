@@ -22,13 +22,13 @@ if (project.hasProperty("GRAPHICS_API")) {
 def dynamicShaders = project.hasProperty("dynamicShaders")
 
 def cmakeArguments = [
-    // Statically link libc++ so libBabylonNativeEmbedding.so is self-contained and
-    // does NOT depend on the app's libc++_shared.so at runtime. A consuming app
-    // (e.g. Teams) ships its own, older libc++_shared.so which wins the jniLibs
-    // pickFirst merge and lacks newer symbols (e.g. __cxa_init_primary_exception)
-    // this NDK's libc++ needs -> dlopen of the shared-STL build fails. Static STL
-    // avoids that ABI-version conflict entirely.
-    "-DANDROID_STL=c++_static",
+    // Dynamically link libc++ (c++_shared). This is safe as long as the AAR is
+    // built with an NDK whose libc++ matches (or is older than) the consuming
+    // app's. The AAR is pinned to the same NDK as the Teams app (r27, see
+    // ndkVersion below), so its libBabylonNativeEmbedding.so and the app's
+    // bundled libc++_shared.so agree and dlopen succeeds. Overridable via the
+    // NDK_VERSION project property for other consumers.
+    "-DANDROID_STL=c++_shared",
     "-DENABLE_PCH=OFF",
     "-DGRAPHICS_API=${graphics_api}",
     "-DNAPI_JAVASCRIPT_ENGINE=${jsEngine}",
@@ -79,7 +79,11 @@ android {
 
         consumerProguardFiles "consumer-rules.pro"
 
-        ndkVersion = "29.0.14206865"
+        // NDK pinned to match the consuming Teams app (ext.versions.ndk =
+        // 27.2.12479018) so this module's libc++ (c++_shared) is ABI-compatible
+        // with the libc++_shared.so the app bundles. Overridable with
+        // -PNDK_VERSION=... (CI passes it from the NDK_VERSION workflow env).
+        ndkVersion = "27.2.12479018"
         if (project.hasProperty("NDK_VERSION")) {
             ndkVersion = project.property("NDK_VERSION")
         }
