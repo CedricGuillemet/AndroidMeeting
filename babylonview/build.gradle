@@ -22,7 +22,13 @@ if (project.hasProperty("GRAPHICS_API")) {
 def dynamicShaders = project.hasProperty("dynamicShaders")
 
 def cmakeArguments = [
-    "-DANDROID_STL=c++_shared",
+    // Statically link libc++ so libBabylonNativeEmbedding.so is self-contained and
+    // does NOT depend on the app's libc++_shared.so at runtime. A consuming app
+    // (e.g. Teams) ships its own, older libc++_shared.so which wins the jniLibs
+    // pickFirst merge and lacks newer symbols (e.g. __cxa_init_primary_exception)
+    // this NDK's libc++ needs -> dlopen of the shared-STL build fails. Static STL
+    // avoids that ABI-version conflict entirely.
+    "-DANDROID_STL=c++_static",
     "-DENABLE_PCH=OFF",
     "-DGRAPHICS_API=${graphics_api}",
     "-DNAPI_JAVASCRIPT_ENGINE=${jsEngine}",
