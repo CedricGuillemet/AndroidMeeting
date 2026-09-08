@@ -97,7 +97,7 @@ set(BABYLON_NATIVE_POLYFILL_URL OFF CACHE BOOL "" FORCE)
 # the source's authoring base up to here.
 FetchContent_Declare(BabylonNative
     GIT_REPOSITORY https://github.com/BabylonJS/BabylonNative.git
-    GIT_TAG fcfda740a0834623deeecc48bae5cfa62090b5e0)
+    GIT_TAG 345037350838f1ea8fb2ebefb03b9255d43ac773)
 
 FetchContent_MakeAvailable(BabylonNative)
 
