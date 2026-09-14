@@ -45,8 +45,8 @@ scene.clearColor = new BABYLON.Color4(0, 0, 0, 0);
 
 ## Building
 
-Two flavors of the AAR can be built, differing only in whether the runtime
-shader compiler is bundled:
+The AAR can be built with either QuickJS (the default) or V8, and with or
+without the runtime shader compiler:
 
 ```bash
 # Shader-cache flavor (default): smallest .so, NO runtime shader compiler.
@@ -56,6 +56,11 @@ shader compiler is bundled:
 # Dynamic-shaders flavor: bundles the glslang/SPIRV-Cross shader compiler, so
 # shaders compile at runtime and no prebuilt cache is needed (larger .so).
 ./gradlew :babylonview:assembleRelease -PdynamicShaders
+
+# Select V8 instead of QuickJS. Combine this with -PdynamicShaders for the
+# V8 + dynamic-shaders variant.
+./gradlew :babylonview:assembleRelease -PjsEngine=V8
+./gradlew :babylonview:assembleRelease -PjsEngine=V8 -PdynamicShaders
 ```
 
 The first configure fetches BabylonNative and all of its dependencies (bgfx,
@@ -66,8 +71,9 @@ build is long. Restrict to a single ABI while iterating:
 ./gradlew :babylonview:assembleRelease -PARM64Only
 ```
 
-Output: `babylonview/build/outputs/aar/babylonview-release.aar` (both flavors
-write to the same path — build one at a time, or see CI which stages both).
+Output: `babylonview/build/outputs/aar/babylonview-release.aar` (all variants
+write to the same path — build one at a time, or use the separately staged CI
+artifacts).
 
 ### Requirements
 
@@ -76,14 +82,19 @@ write to the same path — build one at a time, or see CI which stages both).
 
 ## CI
 
-`.github/workflows/build-aar.yml` builds **both** AAR flavors on GitHub Actions
-(device + emulator ABIs) and uploads them together as the `babylonview-aars`
-artifact:
+`.github/workflows/build-aar.yml` builds all four JavaScript engine / shader
+flavor combinations on GitHub Actions (device + emulator ABIs) and uploads each
+as a separate artifact:
 
 - `babylonview-shadercache-required-release.aar` — no runtime shader compiler;
-  **requires a prebuilt shader cache** (`RuntimeOptions.shaderCachePath`).
+  QuickJS; **requires a prebuilt shader cache** (`RuntimeOptions.shaderCachePath`).
 - `babylonview-dynamic-shaders-release.aar` — bundles the shader compiler and
-  **supports runtime (dynamic) shader compilation**; no prebuilt cache needed.
+  uses QuickJS; **supports runtime (dynamic) shader compilation**; no prebuilt
+  cache needed.
+- `babylonview-v8-shadercache-required-release.aar` — V8; **requires a prebuilt
+  shader cache**.
+- `babylonview-v8-dynamic-shaders-release.aar` — V8; bundles the shader compiler
+  and supports runtime shader compilation.
 
 ## Native build size trade-offs
 
@@ -142,4 +153,3 @@ BabylonNative.runtimeLoadScript(runtime, "app:///scene.js");
 BabylonView view = new BabylonView(this, runtime);
 setContentView(view);
 ```
-

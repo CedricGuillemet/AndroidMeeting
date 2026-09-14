@@ -17,27 +17,33 @@ jobs:
       NDK_VERSION: "27.2.12479018"
       CMAKE_VERSION: "3.22.1"
 
-    # Two independent jobs, one per shader flavor, each producing its own
-    # artifact so the size difference between them is easy to compare.
+    # Four independent jobs, one per JavaScript engine / shader flavor
+    # combination, each producing its own artifact.
     strategy:
       fail-fast: false
       matrix:
         include:
-          # Flavor 1: no runtime shader compiler. Smallest .so. The app MUST
-          # supply a prebuilt GPU shader cache at runtime
-          # (RuntimeOptions.shaderCachePath), or nothing renders.
+          # Keep the original QuickJS artifact names for compatibility.
           - flavor: shader-cache
             gradleArgs: ""
-            label: "shader-cache (prebuilt cache required)"
+            label: "QuickJS + shader cache (prebuilt cache required)"
             aar: babylonview-shadercache-required-release.aar
             artifact: babylonview-shadercache-required-aar
-          # Flavor 2: bundles the glslang/SPIRV-Cross shader compiler. Larger
-          # .so, but compiles shaders at runtime -- no prebuilt cache required.
           - flavor: dynamic-shaders
             gradleArgs: "-PdynamicShaders"
-            label: "dynamic shaders (runtime compiler)"
+            label: "QuickJS + dynamic shaders (runtime compiler)"
             aar: babylonview-dynamic-shaders-release.aar
             artifact: babylonview-dynamic-shaders-aar
+          - flavor: v8-shader-cache
+            gradleArgs: "-PjsEngine=V8"
+            label: "V8 + shader cache (prebuilt cache required)"
+            aar: babylonview-v8-shadercache-required-release.aar
+            artifact: babylonview-v8-shadercache-required-aar
+          - flavor: v8-dynamic-shaders
+            gradleArgs: "-PjsEngine=V8 -PdynamicShaders"
+            label: "V8 + dynamic shaders (runtime compiler)"
+            aar: babylonview-v8-dynamic-shaders-release.aar
+            artifact: babylonview-v8-dynamic-shaders-aar
 
     name: build-${{ matrix.flavor }}
 
@@ -64,11 +70,11 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Build ${{ matrix.flavor }} AAR
-        # BabylonNative + all of its dependencies (bgfx, QuickJS, and -- for the
-        # dynamic flavor -- glslang/SPIRV-Cross) are fetched and compiled by the
-        # external CMake build. Build the device (arm64-v8a) and emulator
-        # (x86_64) ABIs so the AAR runs on both. NDK_VERSION is passed through so
-        # the module builds against the app-matched NDK.
+        # BabylonNative + all of its dependencies (bgfx, the selected JavaScript
+        # engine, and -- for dynamic flavors -- glslang/SPIRV-Cross) are fetched
+        # and compiled by the external CMake build. Build the device (arm64-v8a)
+        # and emulator (x86_64) ABIs so the AAR runs on both. NDK_VERSION is
+        # passed through so the module builds against the app-matched NDK.
         run: ./gradlew :babylonview:assembleRelease ${{ matrix.gradleArgs }} -PtargetAbis=arm64-v8a,x86_64 -PNDK_VERSION=${NDK_VERSION} --no-daemon --stacktrace
 
       - name: Inspect ${{ matrix.flavor }} AAR
