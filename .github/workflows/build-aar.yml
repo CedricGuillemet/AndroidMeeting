@@ -180,8 +180,8 @@ jobs:
         if: always()
         run: |
           mkdir -p bridge-test-diagnostics
-          adb logcat -d -v threadtime > bridge-test-diagnostics/logcat.txt || true
-          adb shell ls -la /data/tombstones > bridge-test-diagnostics/tombstones.txt 2>&1 || true
+          timeout 30s adb logcat -d -v threadtime > bridge-test-diagnostics/logcat.txt || true
+          timeout 30s adb shell ls -la /data/tombstones > bridge-test-diagnostics/tombstones.txt 2>&1 || true
 
       - name: Upload instrumentation evidence
         if: always()
