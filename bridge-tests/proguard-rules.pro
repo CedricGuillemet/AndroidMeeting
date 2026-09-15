@@ -1,0 +1,3 @@
+-keep class com.babylonjs.embedding.tests.** { *; }
+-keep class kotlin.** { *; }
+-dontwarn com.google.errorprone.annotations.**

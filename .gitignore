@@ -7,8 +7,10 @@ local.properties
 # CMake / native build staging
 .cxx/
 Build/
+.native-deps/
 
 # IDE
 .idea/
 *.iml
 .DS_Store
+__pycache__/

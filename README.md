@@ -153,3 +153,91 @@ BabylonNative.runtimeLoadScript(runtime, "app:///scene.js");
 BabylonView view = new BabylonView(this, runtime);
 setContentView(view);
 ```
+
+## JavaScript object bridge
+
+`JsBridge` borrows an existing runtime; it does not own its view or destroy the
+runtime. The runtime must still be initialized by an attached, nonzero-sized
+`BabylonView`. Bridge calls can be submitted from any Java thread. They are
+admitted on the Android main looper, run on the JavaScript thread in submission
+order, and complete their `CompletableFuture` on the main looper.
+
+```java
+JsBridge bridge = new JsBridge(runtime);
+
+bridge.createObjectAsync()
+    .thenCompose(options ->
+        bridge.setPropertyAsync(options, "enabled", JsValue.of(true))
+            .thenCompose(ignored ->
+                bridge.setPropertyAsync(options, "scale", JsValue.of(1.5)))
+            .thenCompose(ignored ->
+                bridge.setPropertyAsync("nativeOptions", JsValue.of(options)))
+            .thenCompose(ignored -> bridge.getPropertyAsync("service"))
+            .thenCompose(serviceValue -> bridge.callPropertyAsync(
+                serviceValue.asObject(), "configure", JsValue.of(options)))
+            .whenComplete((result, error) -> options.releaseAsync()))
+    .thenAccept(result -> {
+        // This continuation runs on the main looper unless an async executor
+        // was selected explicitly.
+    })
+    .exceptionally(error -> {
+        Throwable cause = error.getCause();
+        if (cause instanceof JsException jsError) {
+            android.util.Log.e("Bridge", jsError.getOperation()
+                + " failed for " + jsError.getPropertyKey(), jsError);
+        }
+        return null;
+    });
+
+```
+
+Do not call `join`, `get`, or otherwise block while running on the main looper
+or JavaScript thread. Compose futures and use an explicit executor for costly
+continuations.
+
+Supported values are undefined, null, boolean, JavaScript double, string, and a
+live object handle. `JsValue.nullValue()` is JavaScript null; Java `null` is
+reserved for the optional target, where it selects `globalThis`.
+`JsValue.undefined()` is distinct from null. Missing property reads return
+undefined, while calling a missing or non-function property fails. Keys are
+literal strings (`"a.b"` is not a path), and only global-object properties—not
+module lexical bindings—are visible through target-less operations. Strings
+use their UTF-16 contents without modified-UTF-8 truncation. Numbers use
+JavaScript IEEE-754 doubles; integer precision above 53 bits is not implied.
+
+`JsObject` references are live roots, not JSON copies. Each returned wrapper
+owns an independent reference, even when two wrappers refer to the same
+JavaScript identity. Release each wrapper explicitly; release is idempotent and
+ordered after operations already admitted for that handle. Released, stale,
+and cross-runtime handles are rejected. View detach/reattach preserves handles,
+but runtime destruction invalidates them and settles pending operations.
+
+`callPropertyAsync` looks up the current property and uses its target as
+`this`; target-less calls use the global object. A returned array, function, or
+promise is an ordinary `JsObject`. The future does **not** await a JavaScript
+promise. Errors in later timers, promise continuations, or legacy void
+`runtimeEval`/`runtimeLoadScript` work are outside an already-completed bridge
+operation.
+
+Suspension defers work until a balanced resume. Canceling a Java future prevents
+delivery and skips work that has not started when possible; it cannot interrupt
+running JavaScript or roll back completed side effects.
+
+### Bridge instrumentation
+
+The `bridge-tests` app runs the seven bridge suites against a real
+Surface-backed runtime. Without a property it uses the local library. Artifact
+mode requires an existing AAR and never falls back to the source project:
+
+```powershell
+.\gradlew.bat :babylonview:assembleRelease -PtargetAbis=x86_64
+.\gradlew.bat :bridge-tests:connectedCiAndroidTest `
+  -PbridgeTestAar="$PWD\babylonview\build\outputs\aar\babylonview-release.aar"
+```
+
+CI preserves the four QuickJS/V8 and shader-cache/dynamic release AARs, checks
+all required JNI exports in their packaged arm64-v8a and x86_64 libraries, and
+runs the minified consumer in six x86_64 emulator rows: all four flavors on API
+35 and both dynamic-shader engines on API 25. These tests prove plain
+JavaScript bridge execution, not rendered pixels. arm64-v8a is compiled and
+package-checked but is not executed by this emulator matrix.
