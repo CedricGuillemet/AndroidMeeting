@@ -172,8 +172,7 @@ jobs:
           script: |
             adb wait-for-device
             test "$(adb shell getprop sys.boot_completed | tr -d '\r')" = "1"
-            AAR="$(pwd)/artifacts/${{ matrix.aar }}"
-            timeout 30m ./gradlew :bridge-tests:connectedCiAndroidTest -PbridgeTestAar="${AAR}" --no-daemon --stacktrace
+            timeout 30m ./gradlew :bridge-tests:connectedCiAndroidTest -PbridgeTestAar="$(pwd)/artifacts/${{ matrix.aar }}" --no-daemon --stacktrace
             python3 ci/verify_instrumentation_results.py bridge-tests/build/outputs/androidTest-results/connected
 
       - name: Collect logcat
