@@ -85,6 +85,14 @@ else()
     message(STATUS "AndroidMeeting: runtime shader compilation DISABLED (prebuilt shader cache required).")
 endif()
 
+# Keep fetched builds short enough for Windows while isolating engine, shader,
+# and ABI configurations from one another.
+if(DEFINED AM_DEPENDENCY_ROOT)
+    set(FETCHCONTENT_BASE_DIR
+        "${AM_DEPENDENCY_ROOT}/${NAPI_JAVASCRIPT_ENGINE}-${AM_DYNAMIC_SHADERS}-${ANDROID_ABI}"
+        CACHE PATH "FetchContent build root" FORCE)
+endif()
+
 # Networking polyfills not needed by this view.
 set(BABYLON_NATIVE_POLYFILL_WEBSOCKET OFF CACHE BOOL "" FORCE)
 set(BABYLON_NATIVE_POLYFILL_URL OFF CACHE BOOL "" FORCE)
@@ -107,7 +115,8 @@ FetchContent_MakeAvailable(BabylonNative)
 # upstream Embedding facade and uses upstream's unmodified Android platform
 # header (RuntimeHandle.h) from the fetched tree.
 add_library(BabylonNativeEmbedding SHARED
-    "${CMAKE_CURRENT_SOURCE_DIR}/embedding/cpp/BabylonNativeEmbedding.cpp")
+    "${CMAKE_CURRENT_SOURCE_DIR}/embedding/cpp/BabylonNativeEmbedding.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/embedding/cpp/JsBridge.cpp")
 
 target_include_directories(BabylonNativeEmbedding PRIVATE
     "${babylonnative_SOURCE_DIR}/Embedding/Include/Platform/Android")

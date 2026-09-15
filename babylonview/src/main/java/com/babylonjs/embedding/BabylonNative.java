@@ -14,6 +14,8 @@ import android.view.Surface;
  * <p>Thin facade — owns no state, exposes the C++ API as static methods.
  * Hosts typically wrap it in their own {@code View} subclass (see
  * {@link com.babylonjs.meeting.BabylonView}).
+ * Use {@link JsBridge} for typed asynchronous access to JavaScript values
+ * without changing this facade's runtime ownership.
  *
  * <p>Lifecycle:
  * <ol>
@@ -102,6 +104,42 @@ public final class BabylonNative {
     public static native void runtimeLoadShaderCache(long handle, String assetName);
 
     public static native void runtimeEval(long handle, String source, String sourceUrl);
+
+    static native long bridgeCreate(long runtimeHandle, JsBridge bridge);
+
+    static native void bridgeClose(long bridgeHandle);
+
+    static native void bridgeCancel(long bridgeHandle, long requestId);
+
+    static native void bridgeCreateObject(long bridgeHandle, long requestId);
+
+    static native void bridgeGet(
+            long bridgeHandle, long requestId, long objectHandle, String key);
+
+    static native void bridgeSet(
+            long bridgeHandle,
+            long requestId,
+            long objectHandle,
+            String key,
+            int valueKind,
+            boolean booleanValue,
+            double numberValue,
+            String stringValue,
+            long valueObjectHandle);
+
+    static native void bridgeReleaseObject(
+            long bridgeHandle, long requestId, long objectHandle);
+
+    static native void bridgeCall(
+            long bridgeHandle,
+            long requestId,
+            long objectHandle,
+            String key,
+            int[] valueKinds,
+            boolean[] booleanValues,
+            double[] numberValues,
+            String[] stringValues,
+            long[] objectValues);
 
     // No per-Runtime Suspend/Resume here: each Runtime auto-subscribes to
     // pause/resume in runtimeCreate. Hosts call those once per Activity

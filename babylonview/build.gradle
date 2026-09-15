@@ -51,6 +51,7 @@ def cmakeArguments = [
     "-DBABYLON_NATIVE_PLUGIN_NATIVEENGINE_LOAD_IMAGES=OFF",
     "-DBABYLON_NATIVE_PLUGIN_NATIVEENCODING=OFF",
     "-DBABYLON_NATIVE_PLUGIN_SHADERCACHE=ON",
+    "-DAM_DEPENDENCY_ROOT=${rootProject.file('.native-deps').absolutePath}",
     // Runtime shader compilation toggle (see CMakeLists.txt). OFF by default
     // (prebuilt shader cache required); -PdynamicShaders flips it ON to bundle
     // the glslang/SPIRV-Cross shader compiler for runtime compilation.

@@ -18,6 +18,8 @@
 #include <Babylon/Embedding/View.h>
 #include <Babylon/Embedding/Android/RuntimeHandle.h>
 
+#include "JsBridge.h"
+
 #include <AndroidExtensions/Globals.h>
 
 #include <android/log.h>
@@ -366,7 +368,9 @@ namespace
         }};
 
         // Ownership transfers to the JVM side via the returned jlong.
-        return reinterpret_cast<jlong>(wrapper.release());
+        const jlong handle = reinterpret_cast<jlong>(wrapper.release());
+        Babylon::Embedding::Android::JsBridgeNative::RegisterRuntime(handle, runtimePtr);
+        return handle;
     }
 }
 
@@ -486,8 +490,9 @@ Java_com_babylonjs_embedding_BabylonNative_runtimeCreate__Lcom_babylonjs_embeddi
 }
 
 JNIEXPORT void JNICALL
-Java_com_babylonjs_embedding_BabylonNative_runtimeDestroy(JNIEnv*, jclass, jlong handle)
+Java_com_babylonjs_embedding_BabylonNative_runtimeDestroy(JNIEnv* env, jclass, jlong handle)
 {
+    Babylon::Embedding::Android::JsBridgeNative::CloseRuntime(env, handle);
     AndroidRuntime* androidRuntime = AsAndroidRuntime(handle);
 
 #if BABYLON_NATIVE_PLUGIN_NATIVEXR

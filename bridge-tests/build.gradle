@@ -1,0 +1,56 @@
+plugins {
+    id 'com.android.application'
+}
+
+def suppliedAar = providers.gradleProperty("bridgeTestAar").orNull
+def bridgeAar = suppliedAar == null ? null : file(suppliedAar)
+if (suppliedAar != null && !bridgeAar.isFile()) {
+    throw new GradleException("bridgeTestAar must name an existing AAR: ${bridgeAar}")
+}
+
+android {
+    namespace = 'com.babylonjs.embedding.tests'
+    compileSdk = 34
+
+    defaultConfig {
+        applicationId = 'com.babylonjs.embedding.tests'
+        minSdk = 25
+        targetSdk = 34
+        versionCode = 1
+        versionName = '1.0'
+        testInstrumentationRunner = 'androidx.test.runner.AndroidJUnitRunner'
+        testInstrumentationRunnerArguments timeout_msec: '60000'
+        testProguardFiles 'proguard-test-rules.pro'
+    }
+
+    buildTypes {
+        ci {
+            initWith release
+            minifyEnabled = true
+            signingConfig = signingConfigs.debug
+            matchingFallbacks = ['release']
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    testBuildType = 'ci'
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    if (bridgeAar != null) {
+        implementation files(bridgeAar)
+    } else {
+        implementation project(':babylonview')
+    }
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib:1.9.24'
+
+    androidTestImplementation 'androidx.test:core:1.6.1'
+    androidTestImplementation 'androidx.test:runner:1.6.2'
+    androidTestImplementation 'androidx.test:rules:1.6.1'
+    androidTestImplementation 'androidx.test.ext:junit:1.2.1'
+}
